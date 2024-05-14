@@ -2,7 +2,7 @@ package main
 
 import "net/http"
 
-func (app *application) routes() *http.ServeMux {
+func (app *application) routes() http.Handler {
 	router := http.NewServeMux()
 
 	router.HandleFunc("/list", app.listFilesHandler)
@@ -10,5 +10,5 @@ func (app *application) routes() *http.ServeMux {
 	router.HandleFunc("/health", app.healthCheckHandler)
 	router.HandleFunc("/upload", app.uploadFileHandler)
 
-	return router
+	return app.recover(router)
 }
