@@ -46,15 +46,18 @@ func (app *application) uploadFileHandler(w http.ResponseWriter, r *http.Request
 	mpf, hdr, err := r.FormFile("file")
 	if err != nil {
 		app.logger.Printf("Unable to get form file: %v\n", err)
+		app.writeJSON(w, http.StatusNotFound, "No file given", nil)
 		return
 	}
 	defer mpf.Close()
 
 	if err := storage.Write("uploads/"+hdr.Filename, mpf); err != nil {
 		app.logger.Printf("Unable to write file to disk: %v\n", err)
+		app.writeJSON(w, http.StatusInternalServerError, "Try again", nil)
 		return
 	}
 
+	app.writeJSON(w, http.StatusOK, "File Succesfully Uploaded!", nil)
 }
 
 func (app *application) healthCheckHandler(w http.ResponseWriter, r *http.Request) {
