@@ -5,14 +5,12 @@ import (
 	"os"
 )
 
-func Write(path string, data io.Reader) error {
-	f, err := os.OpenFile(path, os.O_CREATE|os.O_WRONLY, 0666)
+func Write(path string, src io.Reader) error {
+	file, err := os.OpenFile(path, os.O_CREATE|os.O_WRONLY, 0666)
 	if err != nil {
 		return err
 	}
-	defer f.Close()
-
-	_, err = io.Copy(f, data)
+	_, err = io.Copy(file, src)
 	return err
 }
 

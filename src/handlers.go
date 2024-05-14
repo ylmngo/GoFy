@@ -1,7 +1,7 @@
 package main
 
 import (
-	storage "gofy/internal"
+	"gofy/internal/storage"
 	"net/http"
 	"os"
 )
