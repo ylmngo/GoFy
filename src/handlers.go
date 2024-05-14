@@ -1,39 +1,47 @@
 package main
 
 import (
+	"gofy/internal/data"
 	"gofy/internal/storage"
 	"net/http"
-	"os"
+	"strconv"
 )
 
 func (app *application) listFilesHandler(w http.ResponseWriter, r *http.Request) {
-	entries, err := os.ReadDir("uploads/")
+	files, err := app.models.Files.GetAll()
 	if err != nil {
-		app.logger.Printf("Unable to read entries of uploads dir: %v\n", err)
+		app.logger.Printf("Unable to get files from database: %v\n", err)
+		app.writeJSON(w, http.StatusInternalServerError, "Please Try again later", nil)
 		return
 	}
 
-	files := make([]string, 0)
-	for _, entry := range entries {
-		files = append(files, entry.Name())
-	}
-
-	if err := app.writeJSON(w, http.StatusOK, files, nil); err != nil {
-		app.logger.Printf("Unable to write filenames to json: %v\n", err)
-		return
-	}
+	app.writeJSON(w, http.StatusOK, files, nil)
 }
 
 func (app *application) displayFileHandler(w http.ResponseWriter, r *http.Request) {
-	name := r.PathValue("filename")
+	v := r.PathValue("fileId")
+	id, err := strconv.ParseInt(v, 10, 64)
+	if err != nil {
+		app.writeJSON(w, http.StatusBadRequest, "Invalid Id", nil)
+		app.logger.Printf("Unable to parse path value to id: %v\n", err)
+		return
+	}
 
-	data, err := storage.Read("uploads/" + name)
+	f, err := app.models.Files.Get(id)
+	if err != nil {
+		app.writeJSON(w, http.StatusNotFound, "Invalid Id", nil)
+		app.logger.Printf("Unable to get file by id = %d: %v\n", id, err)
+		return
+	}
+
+	data, err := storage.Read("uploads/" + f.Name)
 	if err != nil {
 		app.logger.Printf("Unable to read file from disk: %v\n", err)
 		return
 	}
 
-	w.Header().Set("Content-Type", "application/pdf")
+	ct := http.DetectContentType(data)
+	w.Header().Set("Content-Type", ct)
 	w.Write(data)
 }
 
@@ -50,6 +58,17 @@ func (app *application) uploadFileHandler(w http.ResponseWriter, r *http.Request
 		return
 	}
 	defer mpf.Close()
+
+	f := &data.File{
+		Name:     hdr.Filename,
+		Metadata: "Something about the file",
+	}
+
+	if err := app.models.Files.Insert(f, 1); err != nil {
+		app.logger.Printf("Unable to insert file to database: %v\n", err)
+		app.writeJSON(w, http.StatusInternalServerError, "Failed to insert to database", nil)
+		return
+	}
 
 	if err := storage.Write("uploads/"+hdr.Filename, mpf); err != nil {
 		app.logger.Printf("Unable to write file to disk: %v\n", err)

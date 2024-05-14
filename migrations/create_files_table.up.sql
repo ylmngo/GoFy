@@ -1,5 +1,5 @@
 CREATE TABLE IF NOT EXISTS files (
-    file_id bytea PRIMARY KEY, 
+    file_id bigserial PRIMARY KEY, 
     -- user_id bigint REFERENCES users ON DELETE CASCADE,  
     filename text NOT NULL, 
     metadata text NOT NULL,  

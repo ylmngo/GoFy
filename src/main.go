@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"flag"
 	"fmt"
+	"gofy/internal/data"
 	"log"
 	"net/http"
 	"os"
@@ -22,6 +23,7 @@ type config struct {
 type application struct {
 	cfg    config
 	logger *log.Logger
+	models data.Models
 }
 
 func main() {
@@ -41,9 +43,12 @@ func main() {
 	}
 	defer db.Close()
 
+	logger.Println("database connection pool established")
+
 	app := &application{
 		cfg:    cfg,
 		logger: logger,
+		models: data.NewModels(db),
 	}
 
 	router := app.routes()
@@ -55,6 +60,8 @@ func main() {
 		WriteTimeout: 30 * time.Second,
 		IdleTimeout:  time.Minute,
 	}
+
+	app.logger.Printf("Starting development server on :%d", app.cfg.port)
 
 	if err := srv.ListenAndServe(); err != nil {
 		app.logger.Fatal(err)
