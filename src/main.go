@@ -1,12 +1,16 @@
 package main
 
 import (
+	"context"
+	"database/sql"
 	"flag"
 	"fmt"
 	"log"
 	"net/http"
 	"os"
 	"time"
+
+	_ "github.com/lib/pq"
 )
 
 type config struct {
@@ -31,6 +35,12 @@ func main() {
 
 	logger := log.New(os.Stdout, "", log.Ldate|log.Ltime)
 
+	db, err := openDB(cfg)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer db.Close()
+
 	app := &application{
 		cfg:    cfg,
 		logger: logger,
@@ -49,4 +59,17 @@ func main() {
 	if err := srv.ListenAndServe(); err != nil {
 		app.logger.Fatal(err)
 	}
+}
+
+func openDB(cfg config) (*sql.DB, error) {
+	db, err := sql.Open("postgres", cfg.dsn)
+	if err != nil {
+		return nil, err
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	err = db.PingContext(ctx)
+	return db, err
 }
