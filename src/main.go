@@ -16,12 +16,17 @@ import (
 
 type config struct {
 	env     string
-	dsn     string
 	port    int
 	limiter struct {
 		enabled bool
 		rps     float64
 		burst   int
+	}
+
+	dsn struct {
+		usr string
+		pwd string
+		db  string
 	}
 }
 
@@ -36,7 +41,10 @@ func main() {
 
 	flag.IntVar(&cfg.port, "port", 8000, "Service Port Number")
 	flag.StringVar(&cfg.env, "env", "Development", "Environment (Development|Production)")
-	flag.StringVar(&cfg.dsn, "dsn", "postgres://gofy:freeroam@localhost/gofy?sslmode=disable", "DB datasource name")
+	// flag.StringVar(&cfg.dsn, "dsn", "postgres://gofy:freeroam@localhost/gofy?sslmode=disable", "DB datasource name")
+	flag.StringVar(&cfg.dsn.usr, "dsn-usr", "gofy", "DSN User")
+	flag.StringVar(&cfg.dsn.pwd, "dsn-pwd", "", "DSN Password")
+	flag.StringVar(&cfg.dsn.db, "dsn-db", "gofy", "DSN Database")
 
 	flag.Float64Var(&cfg.limiter.rps, "limiter-rps", 2, "Rate Limiter Max Requests/second")
 	flag.IntVar(&cfg.limiter.burst, "limiter-burst", 4, "Rate Limiter Max Burst Requests")
@@ -78,7 +86,10 @@ func main() {
 }
 
 func openDB(cfg config) (*sql.DB, error) {
-	db, err := sql.Open("postgres", cfg.dsn)
+
+	dsn := fmt.Sprintf("postgres://%s:%s@localhost/%s?sslmode=disable", cfg.dsn.usr, cfg.dsn.pwd, cfg.dsn.db)
+	fmt.Println(dsn)
+	db, err := sql.Open("postgres", dsn)
 	if err != nil {
 		return nil, err
 	}
