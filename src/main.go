@@ -15,9 +15,14 @@ import (
 )
 
 type config struct {
-	env  string
-	dsn  string
-	port int
+	env     string
+	dsn     string
+	port    int
+	limiter struct {
+		enabled bool
+		rps     float64
+		burst   int
+	}
 }
 
 type application struct {
@@ -32,6 +37,10 @@ func main() {
 	flag.IntVar(&cfg.port, "port", 8000, "Service Port Number")
 	flag.StringVar(&cfg.env, "env", "Development", "Environment (Development|Production)")
 	flag.StringVar(&cfg.dsn, "dsn", "postgres://gofy:freeroam@localhost/gofy?sslmode=disable", "DB datasource name")
+
+	flag.Float64Var(&cfg.limiter.rps, "limiter-rps", 2, "Rate Limiter Max Requests/second")
+	flag.IntVar(&cfg.limiter.burst, "limiter-burst", 4, "Rate Limiter Max Burst Requests")
+	flag.BoolVar(&cfg.limiter.enabled, "limiter-enabled", true, "Enable Rate Limiter")
 
 	flag.Parse()
 

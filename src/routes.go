@@ -12,6 +12,7 @@ func (app *application) routes() http.Handler {
 
 	nm := app.nestMiddlewares(
 		app.recover,
+		app.rateLimit,
 	)
 
 	return nm(router)
