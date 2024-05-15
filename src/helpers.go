@@ -68,3 +68,14 @@ func (app *application) readJSON(w http.ResponseWriter, r *http.Request, dst any
 
 	return nil
 }
+
+func (app *application) nestMiddlewares(mws ...Middleware) Middleware {
+	return func(next http.Handler) http.Handler {
+		for i := len(mws) - 1; i >= 0; i-- {
+			mw := mws[i]
+			next = mw(next)
+		}
+
+		return next
+	}
+}

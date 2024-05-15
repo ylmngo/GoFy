@@ -10,5 +10,9 @@ func (app *application) routes() http.Handler {
 	router.HandleFunc("/health", app.healthCheckHandler)
 	router.HandleFunc("/upload", app.uploadFileHandler)
 
-	return app.recover(router)
+	nm := app.nestMiddlewares(
+		app.recover,
+	)
+
+	return nm(router)
 }
