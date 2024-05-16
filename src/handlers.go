@@ -79,6 +79,39 @@ func (app *application) uploadFileHandler(w http.ResponseWriter, r *http.Request
 	app.writeJSON(w, http.StatusOK, "File Succesfully Uploaded!", nil)
 }
 
+func (app *application) registerUserHandler(w http.ResponseWriter, r *http.Request) {
+	var input struct {
+		Name     string `json:"name"`
+		Email    string `json:"email"`
+		Password string `json:"password"`
+	}
+
+	if err := app.readJSON(w, r, &input); err != nil {
+		app.writeJSON(w, http.StatusBadRequest, "invalid json request", nil)
+		app.logger.Printf("Unable to read JSON: %v\n", err)
+		return
+	}
+
+	user := &data.User{
+		Name:  input.Name,
+		Email: input.Email,
+	}
+
+	if err := user.Password.Set(input.Password); err != nil {
+		app.writeJSON(w, http.StatusBadRequest, "invalid password", nil)
+		app.logger.Printf("Unable to Set password: %v\n", err)
+		return
+	}
+
+	if err := app.models.Users.Insert(user); err != nil {
+		app.writeJSON(w, http.StatusInternalServerError, "invalid user details", nil)
+		app.logger.Printf("Unable to save user to db: %v\n", err)
+		return
+	}
+
+	app.writeJSON(w, http.StatusOK, "user has been registered", nil)
+}
+
 func (app *application) healthCheckHandler(w http.ResponseWriter, r *http.Request) {
 	health := &map[string]string{
 		"Status":      "Available",

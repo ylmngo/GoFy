@@ -10,6 +10,8 @@ func (app *application) routes() http.Handler {
 	router.HandleFunc("/health", app.healthCheckHandler)
 	router.HandleFunc("/upload", app.uploadFileHandler)
 
+	router.HandleFunc("/register", app.registerUserHandler)
+
 	nm := app.nestMiddlewares(
 		app.recover,
 		app.rateLimit,

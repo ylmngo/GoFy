@@ -86,7 +86,6 @@ func main() {
 }
 
 func openDB(cfg config) (*sql.DB, error) {
-
 	dsn := fmt.Sprintf("postgres://%s:%s@localhost/%s?sslmode=disable", cfg.dsn.usr, cfg.dsn.pwd, cfg.dsn.db)
 	fmt.Println(dsn)
 	db, err := sql.Open("postgres", dsn)

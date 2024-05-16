@@ -62,7 +62,7 @@ func (app *application) readJSON(w http.ResponseWriter, r *http.Request, dst any
 	}
 
 	// decode to an anonymous struct to ensure that there are no more JSON values
-	if err := dec.Decode(&struct{}{}); err != nil {
+	if err := dec.Decode(&struct{}{}); err != io.EOF {
 		return errors.New("body must only contain a sinlge JSON value")
 	}
 
