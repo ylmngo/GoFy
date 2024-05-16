@@ -15,8 +15,10 @@ import (
 )
 
 type config struct {
-	env     string
-	port    int
+	env    string
+	port   int
+	jwtSec string
+
 	limiter struct {
 		enabled bool
 		rps     float64
@@ -50,6 +52,7 @@ func main() {
 	flag.IntVar(&cfg.limiter.burst, "limiter-burst", 4, "Rate Limiter Max Burst Requests")
 	flag.BoolVar(&cfg.limiter.enabled, "limiter-enabled", true, "Enable Rate Limiter")
 
+	flag.StringVar(&cfg.jwtSec, "jwt-secret", "", "JWT Secret Key")
 	flag.Parse()
 
 	logger := log.New(os.Stdout, "", log.Ldate|log.Ltime)
@@ -87,7 +90,6 @@ func main() {
 
 func openDB(cfg config) (*sql.DB, error) {
 	dsn := fmt.Sprintf("postgres://%s:%s@localhost/%s?sslmode=disable", cfg.dsn.usr, cfg.dsn.pwd, cfg.dsn.db)
-	fmt.Println(dsn)
 	db, err := sql.Open("postgres", dsn)
 	if err != nil {
 		return nil, err

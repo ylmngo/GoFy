@@ -5,6 +5,7 @@ import (
 	"gofy/internal/storage"
 	"net/http"
 	"strconv"
+	"time"
 )
 
 func (app *application) listFilesHandler(w http.ResponseWriter, r *http.Request) {
@@ -15,7 +16,10 @@ func (app *application) listFilesHandler(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	app.writeJSON(w, http.StatusOK, files, nil)
+	res := map[string][]data.File{
+		"files": files,
+	}
+	app.writeJSON(w, http.StatusOK, res, nil)
 }
 
 func (app *application) displayFileHandler(w http.ResponseWriter, r *http.Request) {
@@ -110,6 +114,41 @@ func (app *application) registerUserHandler(w http.ResponseWriter, r *http.Reque
 	}
 
 	app.writeJSON(w, http.StatusOK, "user has been registered", nil)
+}
+
+func (app *application) loginHandler(w http.ResponseWriter, r *http.Request) {
+	var input struct {
+		Name     string `json:"name"`
+		Email    string `json:"email"`
+		Password string `json:"password"`
+	}
+
+	if err := app.readJSON(w, r, &input); err != nil {
+		app.writeJSON(w, http.StatusBadRequest, "invalid json request", nil)
+		return
+	}
+
+	user, err := app.models.Users.GetByEmail(input.Email)
+	if err != nil {
+		app.logger.Printf("Unable to get user by email: %v\n", err)
+		app.writeJSON(w, http.StatusNotFound, "invalid email", nil)
+		return
+	}
+
+	match, _ := user.Password.Matches(input.Password)
+	if !match {
+		app.writeJSON(w, http.StatusNotFound, "invalid password", nil)
+		return
+	}
+
+	jwt, err := data.CreateJWT(user.ID, time.Now().Add(10*time.Minute), "http://localhost:8000", []string{"http://localhost:8000"}, app.cfg.jwtSec)
+	if err != nil {
+		app.writeJSON(w, http.StatusInternalServerError, "could not create authentication token", nil)
+		app.logger.Printf("Unable to create JWT Token: %v\n", err)
+		return
+	}
+
+	app.writeJSON(w, http.StatusCreated, map[string]string{"auth_token": string(jwt)}, nil)
 }
 
 func (app *application) healthCheckHandler(w http.ResponseWriter, r *http.Request) {

@@ -79,3 +79,7 @@ func (app *application) nestMiddlewares(mws ...Middleware) Middleware {
 		return next
 	}
 }
+
+func (app *application) applyMiddleware(handler func(http.ResponseWriter, *http.Request), m func(http.Handler) http.Handler) http.HandlerFunc {
+	return m(http.HandlerFunc(handler)).(http.HandlerFunc)
+}

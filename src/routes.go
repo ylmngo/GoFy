@@ -4,13 +4,16 @@ import "net/http"
 
 func (app *application) routes() http.Handler {
 	router := http.NewServeMux()
+	auth := http.NewServeMux()
 
-	router.HandleFunc("/list", app.listFilesHandler)
-	router.HandleFunc("/list/{fileId}", app.displayFileHandler)
+	auth.HandleFunc("/list/{fileId}", app.displayFileHandler)
+	auth.HandleFunc("/list", app.listFilesHandler)
+	auth.HandleFunc("/upload", app.uploadFileHandler)
+
+	router.Handle("/", app.authenticate(auth))
 	router.HandleFunc("/health", app.healthCheckHandler)
-	router.HandleFunc("/upload", app.uploadFileHandler)
-
 	router.HandleFunc("/register", app.registerUserHandler)
+	router.HandleFunc("/login", app.loginHandler)
 
 	nm := app.nestMiddlewares(
 		app.recover,
