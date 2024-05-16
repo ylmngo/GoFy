@@ -3,4 +3,4 @@ build:
 
 run: 
 	go build -o gofy.exe ./src
-	./gofy
+	@./gofy  -dsn-usr=gofy -dsn-db=gofy -dsn-pwd=freeroam
