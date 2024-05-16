@@ -1,16 +1,20 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"net"
 	"net/http"
+	"strconv"
 	"sync"
 	"time"
 
+	"github.com/pascaldekloe/jwt"
 	"golang.org/x/time/rate"
 )
 
 type Middleware func(next http.Handler) http.Handler
+type contextKey string
 
 func (app *application) recover(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -76,6 +80,49 @@ func (app *application) rateLimit(next http.Handler) http.Handler {
 
 			mu.Unlock()
 		}
+
+		next.ServeHTTP(w, r)
+	})
+}
+
+func (app *application) authenticate(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Add("Vary", "Authorization")
+
+		token := r.Header.Get("Authorization")
+
+		if token == "" {
+			app.writeJSON(w, http.StatusNotAcceptable, "authorization header must be provided", nil)
+			return
+		}
+
+		claims, err := jwt.HMACCheck([]byte(token), []byte(app.cfg.jwtSec))
+		if err != nil {
+			app.writeJSON(w, http.StatusBadRequest, "invalid authentication token", nil)
+			return
+		}
+
+		if !claims.Valid(time.Now()) {
+			app.writeJSON(w, http.StatusBadRequest, "invalid authentication token", nil)
+			return
+		}
+
+		if claims.Issuer != "http://localhost:8000" {
+			app.writeJSON(w, http.StatusBadRequest, "invalid issuer", nil)
+			return
+		}
+
+		id, _ := strconv.ParseInt(claims.Subject, 10, 64)
+
+		user, err := app.models.Users.GetById(int(id))
+		if err != nil {
+			app.writeJSON(w, http.StatusNotFound, "Invalid User", nil)
+			app.logger.Printf("Unable to get user by id: %v\n", err)
+			return
+		}
+
+		ctx := context.WithValue(r.Context(), contextKey("userID"), user)
+		r = r.WithContext(ctx)
 
 		next.ServeHTTP(w, r)
 	})
