@@ -1,6 +1,9 @@
 package main
 
-import "net/http"
+import (
+	"expvar"
+	"net/http"
+)
 
 func (app *application) routes() http.Handler {
 	router := http.NewServeMux()
@@ -15,7 +18,10 @@ func (app *application) routes() http.Handler {
 	router.HandleFunc("/register", app.registerUserHandler)
 	router.HandleFunc("/login", app.loginHandler)
 
+	router.Handle("/debug/vars", expvar.Handler())
+
 	nm := app.nestMiddlewares(
+		app.metrics,
 		app.recover,
 		app.rateLimit,
 	)

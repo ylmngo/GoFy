@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"expvar"
 	"fmt"
 	"net"
 	"net/http"
@@ -125,5 +126,23 @@ func (app *application) authenticate(next http.Handler) http.Handler {
 		r = r.WithContext(ctx)
 
 		next.ServeHTTP(w, r)
+	})
+}
+
+func (app *application) metrics(next http.Handler) http.Handler {
+	requests := expvar.NewInt("total_requests_recieved")
+	responses := expvar.NewInt("total_responses_sent")
+	totalProcessingTime := expvar.NewInt("total_process_time")
+
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		start := time.Now()
+		requests.Add(1)
+		next.ServeHTTP(w, r)
+		responses.Add(1)
+		d := time.Since(start).Milliseconds()
+
+		app.logger.Printf("%v --- %v ms\n", r.URL.Path, d)
+
+		totalProcessingTime.Add(d)
 	})
 }

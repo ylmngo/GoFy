@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"database/sql"
+	"expvar"
 	"flag"
 	"fmt"
 	"gofy/internal/data"
@@ -62,6 +63,10 @@ func main() {
 		log.Fatal(err)
 	}
 	defer db.Close()
+
+	expvar.Publish("database", expvar.Func(func() any {
+		return db.Stats()
+	}))
 
 	logger.Println("database connection pool established")
 
