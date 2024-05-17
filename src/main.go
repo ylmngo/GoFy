@@ -37,6 +37,7 @@ type application struct {
 	cfg    config
 	logger *log.Logger
 	models data.Models
+	store  *data.Store
 }
 
 func main() {
@@ -70,10 +71,16 @@ func main() {
 
 	logger.Println("database connection pool established")
 
+	s, err := data.NewKVStore("localhost:6379", "")
+	if err != nil {
+		logger.Fatal(err)
+	}
+
 	app := &application{
 		cfg:    cfg,
 		logger: logger,
 		models: data.NewModels(db),
+		store:  s,
 	}
 
 	router := app.routes()

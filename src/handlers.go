@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"gofy/internal/data"
 	"gofy/internal/storage"
 	"net/http"
@@ -43,17 +44,27 @@ func (app *application) displayFileHandler(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
-	f, err := app.models.Files.Get(id, int64(usr.ID))
+	k := fmt.Sprintf("%s_%d", v, usr.ID)
+	data, err := app.store.Get(r.Context(), k)
 	if err != nil {
-		app.writeJSON(w, http.StatusNotFound, "Invalid Id", nil)
-		app.logger.Printf("Unable to get file by id = %d: %v\n", id, err)
-		return
-	}
+		app.logger.Print(err.Error())
 
-	data, err := storage.Read("uploads/" + f.Name)
-	if err != nil {
-		app.logger.Printf("Unable to read file from disk: %v\n", err)
-		return
+		f, err := app.models.Files.Get(id, int64(usr.ID))
+		if err != nil {
+			app.writeJSON(w, http.StatusNotFound, "Invalid Id", nil)
+			app.logger.Printf("Unable to get file by id = %d: %v\n", id, err)
+			return
+		}
+
+		data, err = storage.Read("uploads/" + f.Name)
+		if err != nil {
+			app.logger.Printf("Unable to read file from disk: %v\n", err)
+			return
+		}
+
+		if err = app.store.Set(r.Context(), k, data); err != nil {
+			app.logger.Printf("Unable to write data to redis: %v\n", err)
+		}
 	}
 
 	ct := http.DetectContentType(data)
