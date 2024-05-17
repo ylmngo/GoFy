@@ -1,19 +1,22 @@
 package data
 
-import "database/sql"
+import (
+	"database/sql"
+	"errors"
+)
 
-type Model struct {
-	Users  UserModel
-	Files  FileModel
-	Tokens TokenModel
+var (
+	ErrRecordNotFound = errors.New("record not found")
+)
+
+type Models struct {
+	Files FileModel
+	Users UserModel
 }
 
-func NewModel(db *sql.DB) Model {
-	model := Model{
-		Users:  UserModel{DB: db},
-		Tokens: TokenModel{DB: db},
-		Files:  FileModel{DB: db},
+func NewModels(db *sql.DB) Models {
+	return Models{
+		Files: FileModel{DB: db},
+		Users: UserModel{DB: db},
 	}
-
-	return model
 }

@@ -7,11 +7,13 @@ import (
 )
 
 type File struct {
-	Filename   string    `json:"file_name"`
-	FileID     []byte    `json:"file_id"`
-	Metadata   string    `json:"metadata"`
-	UserID     int64     `json:"user_id"`
-	UploadedAt time.Time `json:"uploaded_at"`
+	ID        int64     `json:"id"`
+	UserId    int64     `json:"user_id"`
+	CreatedAt time.Time `json:"-"`
+	Name      string    `json:"name"`
+	Size      int32     `json:"size"`
+	Metadata  string    `json:"metadata"`
+	Version   int32     `json:"-"`
 }
 
 type FileModel struct {
@@ -20,16 +22,16 @@ type FileModel struct {
 
 func (fm FileModel) Insert(f *File, userID int64) error {
 	query := `
-		INSERT into files (user_id, filename, file_id, metadata)
-		VALUES ($1, $2, $3, $4)
+		INSERT into files (user_id, filename, metadata)
+		VALUES ($1, $2, $3)
 		RETURNING uploaded_at;`
 
-	args := []interface{}{userID, f.Filename, f.FileID, f.Metadata}
+	args := []any{userID, f.Name, f.Metadata}
 
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 	defer cancel()
 
-	err := fm.DB.QueryRowContext(ctx, query, args...).Scan(&f.UploadedAt)
+	err := fm.DB.QueryRowContext(ctx, query, args...).Scan(&f.CreatedAt)
 	if err != nil {
 		return err
 	}
@@ -37,49 +39,20 @@ func (fm FileModel) Insert(f *File, userID int64) error {
 	return nil
 }
 
-func (fm FileModel) GetFiles(userID int64) ([]File, error) {
-	var files []File
-	query := `
-		SELECT user_id, filename, file_id, metadata, uploaded_at
-		FROM files 
-		WHERE user_id = $1`
-
-	ctx, cancel := context.WithTimeout(context.Background(), 7*time.Second)
-	defer cancel()
-
-	rows, err := fm.DB.QueryContext(ctx, query, userID)
-	if err != nil {
-		return nil, err
-	}
-
-	for rows.Next() {
-		var f File
-		if err := rows.Scan(&f.UserID, &f.Filename, &f.FileID, &f.Metadata, &f.UploadedAt); err != nil {
-			return nil, err
-		}
-		files = append(files, f)
-	}
-
-	return files, nil
-}
-
-func (fm FileModel) GetFile(userID int64, filename string) (*File, error) {
+func (fm FileModel) Get(fileId, userId int64) (*File, error) {
 	var f File
 	query := `
-	SELECT user_id, filename, file_id, metadata
+	SELECT filename, metadata
 	FROM files 
-	WHERE user_id = $1
-	AND filename = $2`
+	WHERE file_id = $1 and user_id=$2`
 
-	args := []interface{}{userID, filename}
+	args := []any{fileId, userId}
 
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 	defer cancel()
 
 	err := fm.DB.QueryRowContext(ctx, query, args...).Scan(
-		&f.UserID,
-		&f.Filename,
-		&f.FileID,
+		&f.Name,
 		&f.Metadata,
 	)
 
@@ -88,4 +61,34 @@ func (fm FileModel) GetFile(userID int64, filename string) (*File, error) {
 	}
 
 	return &f, nil
+}
+
+func (fm FileModel) GetAll(userId int64) ([]File, error) {
+	var fs []File
+	query := `
+		SELECT filename, metadata
+		FROM files
+		WHERE user_id = $1 
+	`
+
+	args := []any{userId}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	defer cancel()
+
+	rows, err := fm.DB.QueryContext(ctx, query, args...)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var name, meta string
+	for rows.Next() {
+		if err = rows.Scan(&name, &meta); err != nil {
+			return nil, err
+		}
+		fs = append(fs, File{Name: name, Metadata: meta})
+	}
+
+	return fs, nil
 }
