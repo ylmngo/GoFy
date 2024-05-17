@@ -9,7 +9,13 @@ import (
 )
 
 func (app *application) listFilesHandler(w http.ResponseWriter, r *http.Request) {
-	files, err := app.models.Files.GetAll()
+	usr := r.Context().Value(contextKey("userID")).(*data.User)
+	if usr == nil {
+		app.writeJSON(w, http.StatusNotFound, "invalid user", nil)
+		return
+	}
+
+	files, err := app.models.Files.GetAll(int64(usr.ID))
 	if err != nil {
 		app.logger.Printf("Unable to get files from database: %v\n", err)
 		app.writeJSON(w, http.StatusInternalServerError, "Please Try again later", nil)
@@ -23,6 +29,12 @@ func (app *application) listFilesHandler(w http.ResponseWriter, r *http.Request)
 }
 
 func (app *application) displayFileHandler(w http.ResponseWriter, r *http.Request) {
+	usr := r.Context().Value(contextKey("userID")).(*data.User)
+	if usr == nil {
+		app.writeJSON(w, http.StatusInternalServerError, "invalid user", nil)
+		return
+	}
+
 	v := r.PathValue("fileId")
 	id, err := strconv.ParseInt(v, 10, 64)
 	if err != nil {
@@ -31,7 +43,7 @@ func (app *application) displayFileHandler(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
-	f, err := app.models.Files.Get(id)
+	f, err := app.models.Files.Get(id, int64(usr.ID))
 	if err != nil {
 		app.writeJSON(w, http.StatusNotFound, "Invalid Id", nil)
 		app.logger.Printf("Unable to get file by id = %d: %v\n", id, err)
@@ -50,6 +62,12 @@ func (app *application) displayFileHandler(w http.ResponseWriter, r *http.Reques
 }
 
 func (app *application) uploadFileHandler(w http.ResponseWriter, r *http.Request) {
+	usr := r.Context().Value(contextKey("userID")).(*data.User)
+	if usr == nil {
+		app.writeJSON(w, http.StatusInternalServerError, "invalid user", nil)
+		return
+	}
+
 	if err := r.ParseMultipartForm(32 << 20); err != nil {
 		app.logger.Printf("Unable to parse multipart form: %v\n", err)
 		return
@@ -68,7 +86,7 @@ func (app *application) uploadFileHandler(w http.ResponseWriter, r *http.Request
 		Metadata: "Something about the file",
 	}
 
-	if err := app.models.Files.Insert(f, 1); err != nil {
+	if err := app.models.Files.Insert(f, int64(usr.ID)); err != nil {
 		app.logger.Printf("Unable to insert file to database: %v\n", err)
 		app.writeJSON(w, http.StatusInternalServerError, "Failed to insert to database", nil)
 		return
